@@ -1,0 +1,1 @@
+Database  -----> Collection(just like table) ---- Document object (just like tuple or row) 
