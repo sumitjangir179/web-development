@@ -2,14 +2,20 @@
 import express from 'express'
 
 const app = express()
-const port = 3005
+const port = 3000
+app.use(express.json())
 
-app.get('/', (req,res) => {
-    res.send('Hello world!')
+const todos = []
+let id = 1
+app.post('/create-todo', (req,res) => {
+    const {title} = req.body
+    todos.push({id : id++, title : title, isComplete : false})
+    res.status(201).json({status: "success", message : "todos send successfully", data : {}})
+
 })
 
-app.get('/ice-tea', (req,res) => {
-    res.send('Hello Ice Tea!')
+app.get('/get-all-todos', (req,res) => {
+    res.status(201).json({status: "success", message : "todos send successfully", data : todos})
 })
 
 
