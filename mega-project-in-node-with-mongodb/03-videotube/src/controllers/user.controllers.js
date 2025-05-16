@@ -4,6 +4,29 @@ import { User } from '../models/user.models.js'
 import { uploadToCloudinary } from '../utiles/cloudnary.js'
 import { ApiResponse } from '../utiles/ApiResponse.js'
 
+const generateAccessAndRefreshToken = async (userId) => {
+
+    try {
+        const user = await User.findById(userId)
+
+        if (!user) {
+            throw new ApiError(404, 'User not found')
+        }
+
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return { accessToken, refreshToken }
+    } catch (error) {
+        throw new ApiError(500, 'Something went wrong while generating refresh and access tokens')
+    }
+
+
+}
+
 const registerUser = asyncHandler(async (req, res) => {
     const { fullName, email, username, password } = req.body
 
@@ -69,11 +92,11 @@ const registerUser = asyncHandler(async (req, res) => {
     } catch (error) {
         console.log("Error creating user", error)
 
-        if(avatar){
+        if (avatar) {
             await deleteFromCloudinary(avatar.public_id)
         }
 
-        if(coverImage){
+        if (coverImage) {
             await deleteFromCloudinary(coverImage.public_id)
         }
 
@@ -82,4 +105,44 @@ const registerUser = asyncHandler(async (req, res) => {
 
 })
 
-export { registerUser }
+const loginUser = asyncHandler(async (req, res) => {
+    const { email, username, password } = req.body
+
+    if ([email, username, password].some((field) => field?.trim() === '')) {
+        throw new ApiError(400, 'All fields are required')
+    }
+
+    const user = await User.findOne({ $or: [{ username: username.toLowerCase() }, { email }] })
+
+    if (!user) {
+        throw new ApiError(404, 'User not found')
+    }
+
+    const isPasswordCorrect = await user.isPasswordCorrect(password)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(401, 'Invalid credentials')
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    if (!loggedInUser) {
+        throw new ApiError(500, 'Something went wrong while logging in user')
+    }
+
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+    }
+    
+
+    //since mobile doest not have considered cookies we are sending them as headers in response
+    return res.status(200).cookie('refreshToken', refreshToken, options).cookie('accessToken', accessToken, options).json(new ApiResponse(201, { user: loggedInUser, accessToken, refreshToken }, 'User logged in successfully'))
+
+})
+
+
+
+export { registerUser, loginUser }
