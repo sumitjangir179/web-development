@@ -210,9 +210,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
     user.password = newPassword
     await user.save({ validateBeforeSave: false })
-    
+
     return res.status(200)
-    .json(new ApiResponse(200, {}, 'Password changed successfully'))
+        .json(new ApiResponse(200, {}, 'Password changed successfully'))
 
 })
 
@@ -220,7 +220,31 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, res.user, 'User found successfully'))
 })
 
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { fullName, email } = req.body
+
+    if ([fullName, email].some((field) => field?.trim() === '')) {
+        throw new ApiError(400, 'Email and full name are required')
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            $set: {
+                fullName,
+                email
+            }
+        },
+        {
+            new: true
+        }).select("-password -refreshToken")
+
+    return res.status(200)
+        .json(new ApiResponse(200, user, 'Account details updated successfully'))
+})
 
 
 
-export { registerUser, loginUser, refreshAccesToken, logoutUser, changeCurrentPassword }
+
+
+
+export { registerUser, loginUser, refreshAccesToken, logoutUser, changeCurrentPassword, getCurrentUser, updateAccountDetails }
