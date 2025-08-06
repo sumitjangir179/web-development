@@ -1,0 +1,3 @@
+NodeJs:
+-> Runtime enviourment for js
+-> Node is a software that execute js outside the the browser
